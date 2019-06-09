@@ -111,6 +111,29 @@ class Folder:
                     else:
                         file.rename(rename_func(file))
 
+    def rename_folders(self,
+                       start_depth: int = 0,
+                       rename_func: Union[Callable[[File], str], str] = None) -> None:
+        """
+        Renames all folders in the folder (recursively) with the rename func
+
+        :param start_depth: Only folders of that depth or further get renamed (0 = rename all folders)
+        :param rename_func: Function to rename each folder
+        """
+
+        real_start_depth = self.get_depth()
+
+        for root, dirs, files in self.walk(topdown=False):
+            for name in dirs:
+                folder = Folder(root + os.sep + name)
+                delta_depth = folder.get_depth() - real_start_depth
+
+                if delta_depth >= start_depth:
+                    if isinstance(rename_func, str):
+                        folder.rename(RegexHelper.parse(rename_func, folder))
+                    else:
+                        folder.rename(rename_func(folder))
+
     def collapse(self,
                  start_depth: int = 0,
                  rename_func: Union[Callable[[File, List[str]], str], str] = None) -> None:
@@ -169,12 +192,22 @@ class Folder:
         dst = os.path.abspath(dst)
         shutil.copytree(self.path, dst)
 
+    def rename(self, new: str) -> None:
+        """
+        Renames the folder to the given new name
+
+        :param new: new name of the folder without the path
+        """
+        new_path = self.get_folder_path() + os.sep + new
+        os.rename(self.path, new_path)
+
     def move(self, dst: str) -> None:
         """
         Moves the folder and its content to the given location
 
         :param dst: The destination path
         """
+        dst = os.path.abspath(dst)
         shutil.move(self.path, dst)
 
 
@@ -252,6 +285,7 @@ class File:
 
         :param dst: The destination path
         """
+        dst = os.path.abspath(dst)
         shutil.move(self.path, os.path.abspath(dst))
 
     def copy(self, dst: str) -> None:
@@ -260,6 +294,7 @@ class File:
 
         :param dst: The destination path
         """
+        dst = os.path.abspath(dst)
         shutil.copy2(self.path, dst)
 
     def rename(self, new: str) -> None:
@@ -268,7 +303,7 @@ class File:
 
         :param new: new name of the file without the path
         """
-        new_path = os.path.dirname(self.path) + os.sep + new
+        new_path = self.get_folder_path() + os.sep + new
         os.rename(self.path, new_path)
 
     def create(self, create_folder: bool = True) -> File:
@@ -281,6 +316,12 @@ class File:
             Folder(os.path.dirname(self.path)).create()
         with open(self.path, "w"): pass
         return self
+
+    def remove(self) -> None:
+        """
+        Removes the file
+        """
+        os.remove(self.path)
 
     def exists(self) -> bool:
         """
@@ -340,9 +381,12 @@ class RegexHelper:
         :param t: The file / folder object
         :param collapsed: The folders collapsed
         """
+
+        if isinstance(t, File):
+            name = RegexHelper.add_extension(name, t)
+            name = RegexHelper.add_collapsed(name, collapsed)
+
         name = RegexHelper.add_basename(name, t)
-        name = RegexHelper.add_extension(name, t)
-        name = RegexHelper.add_collapsed(name, collapsed)
         name = RegexHelper.add_access_time(name, t)
         name = RegexHelper.add_modified_time(name, t)
         name = RegexHelper.add_creation_time(name, t)
@@ -453,15 +497,15 @@ if __name__ == '__main__':
 
     create_files()
     f = Folder("./test/")
-    print(f)
+    f.rename_folders(0, "%B renamed")
 
 
 """
 TODO:
 [ ] - Get duplicates feature in Folder
-[ ] - Delete feature in File
+[x] - Delete feature in File
 [x] - Copy file to ... feature in File
 [x] - Copy folder to ... feature in Folder
-[ ] - Rename folders feature in Folder
+[x] - Rename folders feature in Folder
 [ ] - Deleteif feature in Folder
 """
