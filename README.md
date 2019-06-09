@@ -27,6 +27,7 @@ We can achieve that with  the following code:
 ```python
 from lf import File, Folder
 
+
 # Create the nested folder structure with some files in it
 File("./example/a.txt").create()
 File("./example/test/b.txt").create()
@@ -57,6 +58,7 @@ Flattening it normally will not work, because the file `a.txt` would exist twice
 ```python
 from lf import File, Folder
 
+
 File("./example/a.txt").create()
 File("./example/test/a.txt").create()
 File("./example/test/b.txt").create()
@@ -79,7 +81,18 @@ example
 The magic happens here: ```rename_func="%B %C[-]%E```
 FL is able to execute special commands on a string renaming function:
 
- - %B - Name of the file (without extension type) or folder
- - %E - Extension type of the file (with .)
- - %C[...] - Collapsed folder names joined with the given sequence between `[` and `]`
+ - `%B` - Name of the file (without extension type) or folder
+ - `%E` - Extension type of the file (with .)
+ - `%C[...]` - Collapsed folder names joined with the given sequence between `[` and `]`
+ - `%T` - Time
+   - `%TC` - Creation Time
+   - `%TM` - Modified Time
+   - `%TA` - Access Time
+   - `%TL` - "Least Tim" minimum time of Creation Time, Modified Time, Access Time, in case a file is corrupt
 
+To use the Time commands you have to add a [datetime formatting code](http://strftime.org/). 
+E.g.
+```python
+"%TCf-TCm-TCY" # "09-06-2019"
+"%B %TMY" # "MyFile 2019"
+```
