@@ -10,8 +10,9 @@ import shutil
 
 class Folder:
     """
-    FileLibrary basic Folder type
+    FileLibrary Folder type to allow high level operations on folders
     """
+
     def __init__(self, path=None):
         self.path: str = os.path.abspath(path)
 
@@ -159,10 +160,27 @@ class Folder:
                 if delta_depth > start_depth:
                     folder.remove()
 
+    def copy(self, dst: str) -> None:
+        """
+        Recursively copies the folder to the given destination
+
+        :param dst: The destination path
+        """
+        dst = os.path.abspath(dst)
+        shutil.copytree(self.path, dst)
+
+    def move(self, dst: str) -> None:
+        """
+        Moves the folder and its content to the given location
+
+        :param dst: The destination path
+        """
+        shutil.move(self.path, dst)
+
 
 class File:
     """
-        FileLibrary basic File type
+        FileLibrary File type to allow high level operations on files
     """
 
     def __init__(self, path=None):
@@ -232,9 +250,17 @@ class File:
         """
         Moves the file to the given destination
 
-        :param dst: destination
+        :param dst: The destination path
         """
         shutil.move(self.path, os.path.abspath(dst))
+
+    def copy(self, dst: str) -> None:
+        """
+        Copies the file to the given destination
+
+        :param dst: The destination path
+        """
+        shutil.copy2(self.path, dst)
 
     def rename(self, new: str) -> None:
         """
@@ -286,7 +312,7 @@ class RegexHelper:
        %TA... - Last access time
        %TM... - Last modification time
        %TC... - Creation time
-       %TL... - The minimum time of %TA, %TM, %TC in case the file times are corrupt
+       %TL... - The minimum time of %TA, %TM, %TC in case the file times are corrupt (TL -> Time least)
     """
 
     _BASENAME_PATTERN = re.compile(r"%B")
@@ -296,6 +322,15 @@ class RegexHelper:
 
     _ACCESS_TIME_PATTERN = re.compile(r"(?<=%TA)-?.")
     _ACCESS_TIME_SUB_PATTERN = re.compile(r"%TA-?.")
+
+    _MODIFIED_TIME_PATTERN = re.compile(r"(?<=%TM)-?.")
+    _MODIFIED_TIME_SUB_PATTERN = re.compile(r"%TM-?.")
+
+    _CREATION_TIME_PATTERN = re.compile(r"(?<=%TC)-?.")
+    _CREATION_TIME_SUB_PATTERN = re.compile(r"%TC-?.")
+
+    _LEAST_TIME_PATTERN = re.compile(r"(?<=%TL)-?.")
+    _LEAST_TIME_SUB_PATTERN = re.compile(r"%TL-?.")
 
     @staticmethod
     def parse(name: str, t: Union[File, Folder], collapsed: List[str] = None) -> str:
@@ -309,6 +344,9 @@ class RegexHelper:
         name = RegexHelper.add_extension(name, t)
         name = RegexHelper.add_collapsed(name, collapsed)
         name = RegexHelper.add_access_time(name, t)
+        name = RegexHelper.add_modified_time(name, t)
+        name = RegexHelper.add_creation_time(name, t)
+        name = RegexHelper.add_least_time(name, t)
         return name
 
     @staticmethod
@@ -333,7 +371,7 @@ class RegexHelper:
     def add_collapsed(name: str, collapsed: List[str]):
         """
         Executes the collapsed command "C%[...]"
-        by adding the collapsed folder names joined by the specified sequence to the new name
+        by adding the collapsed folder names joined by the given sequence to the new name
         """
         for match in RegexHelper._COLLAPSED_JOIN_PATTERN.finditer(name):
             join_seq = match.group()
@@ -344,12 +382,54 @@ class RegexHelper:
     def add_access_time(name: str, t: Union[File, Folder]) -> str:
         """
         Executes the access time command "%TA"
-        by adding the last access time with the specified datetime strftime code to the name
+        by adding the last access time with the given datetime strftime code to the name
         """
         for match in RegexHelper._ACCESS_TIME_PATTERN.finditer(name):
             dt_code = match.group()
             time = datetime.fromtimestamp(t.get_access_time()).strftime("%" + dt_code)
             name = RegexHelper._ACCESS_TIME_SUB_PATTERN.sub(time, name, count=1)
+
+        return name
+
+    @staticmethod
+    def add_modified_time(name: str, t: Union[File, Folder]) -> str:
+        """
+        Executes the modified time command "%TM"
+        by adding the last modified time with the given datetime strftime code to the name
+        """
+        for match in RegexHelper._MODIFIED_TIME_PATTERN.finditer(name):
+            dt_code = match.group()
+            time = datetime.fromtimestamp(t.get_modified_time()).strftime("%" + dt_code)
+            name = RegexHelper._MODIFIED_TIME_SUB_PATTERN.sub(time, name, count=1)
+
+        return name
+
+    @staticmethod
+    def add_creation_time(name: str, t: Union[File, Folder]) -> str:
+        """
+        Executes the creation time command "%TC"
+        by adding the creation time with the given datetime strftime code to the name
+        """
+        for match in RegexHelper._CREATION_TIME_PATTERN.finditer(name):
+            dt_code = match.group()
+            time = datetime.fromtimestamp(t.get_creation_time()).strftime("%" + dt_code)
+            name = RegexHelper._CREATION_TIME_SUB_PATTERN.sub(time, name, count=1)
+
+        return name
+
+    @staticmethod
+    def add_least_time(name: str, t: Union[File, Folder]) -> str:
+        """
+        Executes the minimum time command "%TL"
+        by adding the minimum time with the given datetime strftime code to the name
+        """
+        for match in RegexHelper._LEAST_TIME_PATTERN.finditer(name):
+            dt_code = match.group()
+            time = datetime.fromtimestamp(min(
+                t.get_creation_time(),
+                t.get_modified_time(),
+                t.get_access_time())).strftime("%" + dt_code)
+            name = RegexHelper._LEAST_TIME_SUB_PATTERN.sub(time, name, count=1)
 
         return name
 
@@ -373,16 +453,15 @@ if __name__ == '__main__':
 
     create_files()
     f = Folder("./test/")
-    f.collapse()
-    f.rename_files(0, "%B %TAd %TAB, %TAY%E")
+    print(f)
 
 
 """
 TODO:
- - Get duplicates feature in Folder
- - Delete feature in File
- - Copy file to ... feature in File
- - Copy folder to ... feature in Folder
- - Rename folders feature in Folder
- - Deleteif feature in Folder
+[ ] - Get duplicates feature in Folder
+[ ] - Delete feature in File
+[x] - Copy file to ... feature in File
+[x] - Copy folder to ... feature in Folder
+[ ] - Rename folders feature in Folder
+[ ] - Deleteif feature in Folder
 """
