@@ -19,6 +19,32 @@ class Folder:
     def __str__(self):
         return ">> {}".format("\n   ".join(e.path for e in os.scandir(self.path)))
 
+    def beautify(self) -> str:
+        """
+        Returns a text tree visualization of the folder structure
+        """
+
+        def beautify_walk(path: str, depth: int) -> str:
+            out = str()
+
+            entries = [e for e in os.scandir(path)]
+            for i, e in enumerate(entries):
+                if e.is_dir():
+                    out += "{}├── {}\n".format("│   " * (depth - 1), e.name)
+                    out += beautify_walk(e.path, depth + 1)
+                else:
+                    if i != len(entries) - 1:
+                        out += "{}├── {}\n".format("│   " * (depth - 1), e.name)
+                    else:
+                        out += "{}└── {}\n".format("│   " * (depth - 1), e.name)
+
+            return out
+
+        out = self.get_name() + "\n"
+        out += beautify_walk(self.path, 1)
+
+        return out
+
     def get_name(self) -> str:
         """
         Returns the name of the folder (no path)
@@ -476,28 +502,6 @@ class RegexHelper:
             name = RegexHelper._LEAST_TIME_SUB_PATTERN.sub(time, name, count=1)
 
         return name
-
-
-if __name__ == '__main__':
-    def create_files():
-        Folder("./test/temp/t").create()
-        File("./test/temp/b.txt").create()
-        File("./test/temp/t/a.txt").create()
-        File("./test/c.png").create()
-
-    def collapse_fancy():
-        f = Folder("./test/")
-        f.collapse(0,
-                   lambda file, collapsed: file.get_basename() + " " + "_".join(collapsed) + file.get_extension()
-                   )
-
-    def collapse():
-        f = Folder("./test/")
-        f.collapse(0)
-
-    create_files()
-    f = Folder("./test/")
-    f.rename_folders(0, "%B renamed")
 
 
 """
