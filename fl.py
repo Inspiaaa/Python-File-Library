@@ -348,8 +348,8 @@ class RegexHelper:
         """
         for match in RegexHelper._ACCESS_TIME_PATTERN.finditer(name):
             dt_code = match.group()
-            name = RegexHelper._ACCESS_TIME_SUB_PATTERN.sub(
-                datetime.fromtimestamp(t.get_access_time()).strftime("%" + dt_code), name)
+            time = datetime.fromtimestamp(t.get_access_time()).strftime("%" + dt_code)
+            name = RegexHelper._ACCESS_TIME_SUB_PATTERN.sub(time, name, count=1)
 
         return name
 
@@ -371,9 +371,10 @@ if __name__ == '__main__':
         f = Folder("./test/")
         f.collapse(0)
 
-    #create_files()
+    create_files()
     f = Folder("./test/")
-    f.rename_files(0, "%B %TAa%E")
+    f.collapse()
+    f.rename_files(0, "%B %TAd %TAB, %TAY%E")
 
 
 """
