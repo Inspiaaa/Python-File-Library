@@ -65,7 +65,7 @@ class Folder:
         """
         Returns the depth (layers of folders) of the folder
         """
-        return len(Helper.split_path(self.path))
+        return len(PathHelper.split_path(self.path))
 
     def exists(self) -> bool:
         """
@@ -106,7 +106,7 @@ class Folder:
 
                 if delta_depth >= start_depth:
                     if isinstance(rename_func, str):
-                        RegexHelper.parse(rename_func, file)
+                        file.rename(RegexHelper.parse(rename_func, file))
                     else:
                         file.rename(rename_func(file))
 
@@ -129,7 +129,7 @@ class Folder:
 
                 if delta_depth > start_depth:
                     target_folder = os.sep.join(
-                        Helper.split_path(file.get_folder_path())
+                        PathHelper.split_path(file.get_folder_path())
                         [:real_start_depth + start_depth]
                     )
 
@@ -141,14 +141,14 @@ class Folder:
                             file.move(
                                 target_folder
                                 + os.sep
-                                + RegexHelper.parse(rename_func, file, Helper.split_path(file.get_folder_path())
+                                + RegexHelper.parse(rename_func, file, PathHelper.split_path(file.get_folder_path())
                                 [real_start_depth + start_depth:])
                             )
                         else:
                             file.move(
                                 target_folder
                                 + os.sep
-                                + rename_func(file, Helper.split_path(file.get_folder_path())
+                                + rename_func(file, PathHelper.split_path(file.get_folder_path())
                                 [real_start_depth + start_depth:])
                             )
 
@@ -172,7 +172,7 @@ class File:
         """
         Returns the depth (layers of folders) of the file
         """
-        return len(Helper.split_path(self.get_folder_path()))
+        return len(PathHelper.split_path(self.get_folder_path()))
 
     def get_modified_time(self) -> float:
         """
@@ -267,7 +267,7 @@ class File:
         return self.path
 
 
-class Helper:
+class PathHelper:
     @staticmethod
     def split_path(path: str) -> List[str]:
         return path.split(os.sep)
@@ -281,6 +281,12 @@ class RegexHelper:
     %B - Basename
     %E - Extension name with .
     %C[...] - Collapsed folders joined with sequence between [ and ]
+
+    %T - Time
+       %TA... - Last access time
+       %TM... - Last modification time
+       %TC... - Creation time
+       %TL... - The minimum time of %TA, %TM, %TC in case the file times are corrupt
     """
 
     _BASENAME_PATTERN = re.compile(r"%B")
@@ -288,28 +294,63 @@ class RegexHelper:
     _COLLAPSED_JOIN_PATTERN = re.compile(r"(?<=%C\[).*?(?=\])")
     _COLLAPSED_SUB_PATTERN = re.compile(r"%C\[(.*?)\]")
 
+    _ACCESS_TIME_PATTERN = re.compile(r"(?<=%TA)-?.")
+    _ACCESS_TIME_SUB_PATTERN = re.compile(r"%TA-?.")
+
     @staticmethod
     def parse(name: str, t: Union[File, Folder], collapsed: List[str] = None) -> str:
+        """
+        Returns the new name of a folder / file after processing special commands such as %B
+        :param name: The new name of the folder / file with the commands
+        :param t: The file / folder object
+        :param collapsed: The folders collapsed
+        """
         name = RegexHelper.add_basename(name, t)
         name = RegexHelper.add_extension(name, t)
         name = RegexHelper.add_collapsed(name, collapsed)
+        name = RegexHelper.add_access_time(name, t)
         return name
 
     @staticmethod
     def add_basename(name: str, t: Union[File, Folder]) -> str:
+        """
+        Executes the basename command "%B"
+        by adding the basename of the folder or file to the new name
+        """
         basename = t.get_basename() if isinstance(t, File) else t.get_name()
         return RegexHelper._BASENAME_PATTERN.sub(basename, name)
 
     @staticmethod
     def add_extension(name: str, t: File) -> str:
+        """
+        Executes the extension command "%E"
+        by adding the extension type of file to the new name (with .)
+        """
         extension = t.get_extension()
         return RegexHelper._EXTENSION_PATTERN.sub(extension, name)
 
     @staticmethod
     def add_collapsed(name: str, collapsed: List[str]):
+        """
+        Executes the collapsed command "C%[...]"
+        by adding the collapsed folder names joined by the specified sequence to the new name
+        """
         for match in RegexHelper._COLLAPSED_JOIN_PATTERN.finditer(name):
             join_seq = match.group()
             name = RegexHelper._COLLAPSED_SUB_PATTERN.sub(join_seq.join(collapsed), name, count=1)
+        return name
+
+    @staticmethod
+    def add_access_time(name: str, t: Union[File, Folder]) -> str:
+        """
+        Executes the access time command "%TA"
+        by adding the last access time with the specified datetime strftime code to the name
+        """
+        for match in RegexHelper._ACCESS_TIME_PATTERN.finditer(name):
+            dt_code = match.group()
+            name = RegexHelper._ACCESS_TIME_SUB_PATTERN.sub(
+                datetime.fromtimestamp(t.get_access_time()).strftime("%" + dt_code), name)
+
         return name
 
 
@@ -318,7 +359,7 @@ if __name__ == '__main__':
         Folder("./test/temp/t").create()
         File("./test/temp/b.txt").create()
         File("./test/temp/t/a.txt").create()
-        File("./test//c.png").create()
+        File("./test/c.png").create()
 
     def collapse_fancy():
         f = Folder("./test/")
@@ -330,13 +371,17 @@ if __name__ == '__main__':
         f = Folder("./test/")
         f.collapse(0)
 
-    create_files()
+    #create_files()
     f = Folder("./test/")
-    f.collapse(0, "%B %C[-]%E")
+    f.rename_files(0, "%B %TAa%E")
 
 
 """
 TODO:
- - Get duplicates method for folder
- - Remove files from folder
+ - Get duplicates feature in Folder
+ - Delete feature in File
+ - Copy file to ... feature in File
+ - Copy folder to ... feature in Folder
+ - Rename folders feature in Folder
+ - Deleteif feature in Folder
 """
