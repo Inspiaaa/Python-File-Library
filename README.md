@@ -96,3 +96,25 @@ E.g.
 "%TCf-TCm-TCY" # "09-06-2019"
 "%B %TMY" # "MyFile 2019"
 ```
+
+### Printing a folder structure
+```python
+File("./example/a.txt").create()
+File("./example/test/a.txt").create()
+File("./example/test/b.txt").create()
+File("./example/test/temp/c.txt").create()
+
+d = Folder("./example/")
+print(d.beautify())
+```
+
+Output:
+```
+example
+├── a.txt
+├── test
+│   ├── a.txt
+│   ├── b.txt
+│   ├── temp
+│   │   └── c.txt
+```
