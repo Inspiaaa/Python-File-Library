@@ -1,5 +1,5 @@
 # FL - Python File Library
-FL enables many high level operations on Files and Folders in an OOP way.
+FL enables many high level operations on Files and Folders in an OOP style.
 
 ## Examples
 
@@ -88,7 +88,7 @@ FL is able to execute special commands on a string renaming function:
    - `%TC` - Creation Time
    - `%TM` - Modified Time
    - `%TA` - Access Time
-   - `%TL` - "Least Tim" minimum time of Creation Time, Modified Time, Access Time, in case a file is corrupt
+   - `%TL` - "Least Time" minimum time of Creation Time, Modified Time, Access Time, in case a file is corrupt
 
 To use the Time commands you have to add a [datetime formatting code](http://strftime.org/). 
 E.g.
