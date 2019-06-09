@@ -1,3 +1,4 @@
+![Python 3.7](https://img.shields.io/badge/Python-3.7-blue.svg)
 # FL - Python File Library
 FL enables many high level operations on Files and Folders in an OOP style.
 
