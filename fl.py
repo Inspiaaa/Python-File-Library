@@ -1,8 +1,10 @@
 
 from __future__ import annotations
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Union
+from datetime import datetime
 
 import os
+import re
 import shutil
 
 
@@ -15,6 +17,42 @@ class Folder:
 
     def __str__(self):
         return ">> {}".format("\n   ".join(e.path for e in os.scandir(self.path)))
+
+    def get_name(self) -> str:
+        """
+        Returns the name of the folder (no path)
+        """
+        return os.path.basename(self.path)
+
+    def get_path(self) -> str:
+        """
+        Returns the path of the folder
+        """
+        return self.path
+
+    def get_folder_path(self) -> str:
+        """
+        Returns the path of the folder containing the folder
+        """
+        return os.path.dirname(self.path)
+
+    def get_modified_time(self) -> float:
+        """
+        Returns the time of the last modification in seconds
+        """
+        return os.path.getmtime(self.path)
+
+    def get_access_time(self) -> float:
+        """
+        Returns the time of the last access in seconds
+        """
+        return os.path.getatime(self.path)
+
+    def get_creation_time(self) -> float:
+        """
+        Returns the time of the creation in seconds
+        """
+        return os.path.getctime(self.path)
 
     def walk(self, topdown=True, onerror=None, followlinks=False) -> Tuple[str, List[str], List[str]]:
         """
@@ -49,7 +87,32 @@ class Folder:
         """
         shutil.rmtree(self.path)
 
-    def collapse(self, start_depth: int = 0, rename_func: Callable[[File, List[str]], str] = None) -> None:
+    def rename_files(self,
+                     start_depth: int = 0,
+                     rename_func: Union[Callable[[File], str], str] = None) -> None:
+        """
+        Renames all files in the folder (recursively) with the rename func
+
+        :param start_depth: Only files of that depth or further get renamed (0 = rename all files)
+        :param rename_func: Function to rename each file
+        """
+
+        real_start_depth = self.get_depth()
+
+        for root, dirs, files in self.walk():
+            for name in files:
+                file = File(root + os.sep + name)
+                delta_depth = file.get_depth() - real_start_depth
+
+                if delta_depth >= start_depth:
+                    if isinstance(rename_func, str):
+                        RegexHelper.parse(rename_func, file)
+                    else:
+                        file.rename(rename_func(file))
+
+    def collapse(self,
+                 start_depth: int = 0,
+                 rename_func: Union[Callable[[File, List[str]], str], str] = None) -> None:
         """
         Flattens a folder Structure
 
@@ -74,13 +137,20 @@ class Folder:
                         file.move(target_folder)
 
                     else:
-
-                        file.move(
-                            target_folder
-                            + os.sep
-                            + rename_func(file, Helper.split_path(file.get_folder_path())
-                            [real_start_depth + start_depth:])
-                        )
+                        if isinstance(rename_func, str):
+                            file.move(
+                                target_folder
+                                + os.sep
+                                + RegexHelper.parse(rename_func, file, Helper.split_path(file.get_folder_path())
+                                [real_start_depth + start_depth:])
+                            )
+                        else:
+                            file.move(
+                                target_folder
+                                + os.sep
+                                + rename_func(file, Helper.split_path(file.get_folder_path())
+                                [real_start_depth + start_depth:])
+                            )
 
             for name in dirs:
                 folder = Folder(root + os.sep + name)
@@ -203,6 +273,46 @@ class Helper:
         return path.split(os.sep)
 
 
+class RegexHelper:
+    """
+    Helper class to allow special rename functions
+
+    Commands:
+    %B - Basename
+    %E - Extension name with .
+    %C[...] - Collapsed folders joined with sequence between [ and ]
+    """
+
+    _BASENAME_PATTERN = re.compile(r"%B")
+    _EXTENSION_PATTERN = re.compile(r"%E")
+    _COLLAPSED_JOIN_PATTERN = re.compile(r"(?<=%C\[).*?(?=\])")
+    _COLLAPSED_SUB_PATTERN = re.compile(r"%C\[(.*?)\]")
+
+    @staticmethod
+    def parse(name: str, t: Union[File, Folder], collapsed: List[str] = None) -> str:
+        name = RegexHelper.add_basename(name, t)
+        name = RegexHelper.add_extension(name, t)
+        name = RegexHelper.add_collapsed(name, collapsed)
+        return name
+
+    @staticmethod
+    def add_basename(name: str, t: Union[File, Folder]) -> str:
+        basename = t.get_basename() if isinstance(t, File) else t.get_name()
+        return RegexHelper._BASENAME_PATTERN.sub(basename, name)
+
+    @staticmethod
+    def add_extension(name: str, t: File) -> str:
+        extension = t.get_extension()
+        return RegexHelper._EXTENSION_PATTERN.sub(extension, name)
+
+    @staticmethod
+    def add_collapsed(name: str, collapsed: List[str]):
+        for match in RegexHelper._COLLAPSED_JOIN_PATTERN.finditer(name):
+            join_seq = match.group()
+            name = RegexHelper._COLLAPSED_SUB_PATTERN.sub(join_seq.join(collapsed), name, count=1)
+        return name
+
+
 if __name__ == '__main__':
     def create_files():
         Folder("./test/temp/t").create()
@@ -220,14 +330,13 @@ if __name__ == '__main__':
         f = Folder("./test/")
         f.collapse(0)
 
-
     create_files()
-    collapse()
-    collapse_fancy()
+    f = Folder("./test/")
+    f.collapse(0, "%B %C[-]%E")
+
 
 """
 TODO:
- - Fix basic collapse feature
  - Get duplicates method for folder
  - Remove files from folder
 """
