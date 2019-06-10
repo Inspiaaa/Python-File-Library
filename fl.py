@@ -104,7 +104,6 @@ class Folder:
         """
         Creates the given folder structure
         """
-
         os.makedirs(self.path, exist_ok=True)
         return self
 
@@ -115,13 +114,13 @@ class Folder:
         shutil.rmtree(self.path)
 
     def rename_files(self,
-                     start_depth: int = 0,
-                     rename_func: Union[Callable[[File], str], str] = None) -> None:
+                     rename_func: Union[Callable[[File], str], str] = None,
+                     start_depth: int = 0) -> None:
         """
         Renames all files in the folder (recursively) with the rename func
 
-        :param start_depth: Only files of that depth or further get renamed (0 = rename all files)
         :param rename_func: Function to rename each file
+        :param start_depth: Only files of that depth or further get renamed (0 = rename all files)
         """
 
         real_start_depth = self.get_depth()
@@ -138,13 +137,13 @@ class Folder:
                         file.rename(rename_func(file))
 
     def rename_folders(self,
-                       start_depth: int = 0,
-                       rename_func: Union[Callable[[File], str], str] = None) -> None:
+                       rename_func: Union[Callable[[File], str], str] = None,
+                       start_depth: int = 0) -> None:
         """
         Renames all folders in the folder (recursively) with the rename func
 
-        :param start_depth: Only folders of that depth or further get renamed (0 = rename all folders)
         :param rename_func: Function to rename each folder
+        :param start_depth: Only folders of that depth or further are renamed (0 = rename all folders)
         """
 
         real_start_depth = self.get_depth()
@@ -208,6 +207,40 @@ class Folder:
 
                 if delta_depth > start_depth:
                     folder.remove()
+
+    def remove_files(self, start_depth: int = 0) -> None:
+        """
+        Deletes all files in the folder
+
+        :param start_depth: Only files of that depth or further get removed (0 = remove all files)
+        """
+
+        real_start_depth = self.get_depth()
+
+        for root, dirs, files in self.walk():
+            for name in files:
+                file = File(root + os.sep + name)
+                delta_depth = file.get_depth() - real_start_depth
+                if delta_depth >= start_depth:
+                    file.remove()
+
+    def removeif_files(self, condition: Callable[[File], bool], start_depth: int = 0) -> None:
+        """
+        Recursively goes through all files and removes each if the return of the condition function is true
+
+        :param condition: When the function returns true, the file is removed
+        :param start_depth: Only files of that depth or further get checked with the condition function (0 = check all)
+        """
+        real_start_depth = self.get_depth()
+
+        for root, dirs, files in self.walk():
+            for name in files:
+                file = File(root + os.sep + name)
+                delta_depth = file.get_depth() - real_start_depth
+
+                if delta_depth >= start_depth:
+                    if condition(file):
+                        file.remove()
 
     def copy(self, dst: str) -> None:
         """
@@ -323,13 +356,14 @@ class File:
         dst = os.path.abspath(dst)
         shutil.copy2(self.path, dst)
 
-    def rename(self, new: str) -> None:
+    def rename(self, new: str, rename_func: bool = True) -> None:
         """
         Renames the file to the given new name
 
-        :param new: new name of the file without the path
+        :param new: New name of the file without the path
+        :param rename_func: If true, special % commands will be run on the new name
         """
-        new_path = self.get_folder_path() + os.sep + new
+        new_path = self.get_folder_path() + os.sep + RegexHelper(new, self) if rename_func else new
         os.rename(self.path, new_path)
 
     def create(self, create_folder: bool = True) -> File:
@@ -504,6 +538,29 @@ class RegexHelper:
         return name
 
 
+class Example:
+    @staticmethod
+    def create_simple():
+        File("./example/a.txt").create()
+        File("./example/b.txt").create()
+        File("./example/c.txt").create()
+
+    @staticmethod
+    def create_simple_nested():
+        File("./example/a.txt").create()
+        File("./example/test/b.txt").create()
+        File("./example/test/temp/c.txt").create()
+
+    @staticmethod
+    def create_nested_with_duplicates():
+        File("./example/a.txt").create()
+        File("./example/test/a.txt").create()
+        File("./example/test/b.txt").create()
+        File("./example/test/temp/a.txt").create()
+        File("./example/test/temp/b.txt").create()
+        File("./example/test/temp/c.txt").create()
+
+
 """
 TODO:
 [ ] - Get duplicates feature in Folder
@@ -511,5 +568,5 @@ TODO:
 [x] - Copy file to ... feature in File
 [x] - Copy folder to ... feature in Folder
 [x] - Rename folders feature in Folder
-[ ] - Deleteif feature in Folder
+[x] - Deleteif feature in Folder
 """
