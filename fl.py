@@ -1,6 +1,6 @@
 
 from __future__ import annotations
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Tuple, Union, Any
 from datetime import datetime
 
 import os
@@ -16,8 +16,11 @@ class Folder:
     def __init__(self, path=None):
         self.path: str = os.path.abspath(path)
 
+    def __repr__(self):
+        return f"Folder({self.path})"
+
     def __str__(self):
-        return ">> {}".format("\n   ".join(e.path for e in os.scandir(self.path)))
+        return self.beautify()
 
     def beautify(self) -> str:
         """
@@ -40,10 +43,34 @@ class Folder:
 
             return out
 
-        out = self.get_name() + "\n"
-        out += beautify_walk(self.path, 1)
+        beautified = self.get_name() + "\n"
+        beautified += beautify_walk(self.path, 1)
 
-        return out
+        return beautified
+
+    def print_beautified(self) -> None:
+        """
+        Returns a text tree visualization of the folder structure
+        """
+
+        def beautify_walk(path: str, depth: int) -> str:
+            out = str()
+
+            entries = [e for e in os.scandir(path)]
+            for i, e in enumerate(entries):
+                if e.is_dir():
+                    print("{}├── {}".format("│   " * (depth - 1), e.name))
+                    beautify_walk(e.path, depth + 1)
+                else:
+                    if i != len(entries) - 1:
+                        print("{}├── {}".format("│   " * (depth - 1), e.name))
+                    else:
+                        print("{}└── {}".format("│   " * (depth - 1), e.name))
+
+            return out
+
+        print(self.get_name())
+        beautify_walk(self.path, 1)
 
     def get_name(self) -> str:
         """
@@ -87,6 +114,39 @@ class Folder:
         """
         for root, dirs, files in os.walk(self.path, topdown=topdown, onerror=onerror, followlinks=followlinks):
             yield root, dirs, files
+
+    def foreach_file(self, func: Callable[[File], Any]) -> List[Any]:
+        """
+        Recursively goes through all files in the folder and executes the given function for each
+
+        :param func: The function that is called for every file
+        :return: Returns a list of the return values of each function call if the value is not none
+        """
+
+        results = []
+        for root, dirs, files in self.walk():
+            for name in files:
+                ret = func(File(root + os.sep + name))
+                if ret is not None:
+                    results.append(ret)
+
+        return results
+
+    def foreach_folder(self, func: Callable[[Folder], Any]) -> List[Any]:
+        """
+        Recursively goes through all folders in the folder and executes the given function for each
+        :param func: The function that is called for every folder
+        :return: Returns a list of the return values of each function call if the value is not none
+        """
+
+        results = []
+        for root, dirs, files in self.walk():
+            for name in dirs:
+                ret = func(Folder(root + os.sep + name))
+                if ret is not None:
+                    results.append(ret)
+
+        return results
 
     def get_depth(self) -> int:
         """
@@ -242,6 +302,28 @@ class Folder:
                     if condition(file):
                         file.remove()
 
+    def find_folders(self, query: str) -> List[Folder]:
+        """
+        Recursively goes through all folders in the folder and checks if the query is in the folder name
+        :param query: Only folder names containing the query are returned
+        :return: List of found Folder objects
+        """
+
+        results = []
+        self.foreach_folder(lambda folder: results.append(folder) if query in folder.get_name() else None)
+        return results
+
+    def find_files(self, query: str) -> List[File]:
+        """
+        Recursively goes through all files in the folder and checks if the query is in the file name
+        :param query: Only file names containing the query are returned
+        :return: List of found File objects
+        """
+
+        results = []
+        self.foreach_file(lambda file: results.append(file) if query in file.get_name() else None)
+        return results
+
     def copy(self, dst: str) -> None:
         """
         Recursively copies the folder to the given destination
@@ -338,6 +420,12 @@ class File:
         """
         return Folder(self.get_folder_path())
 
+    def get_size(self) -> int:
+        """
+        Returns the size of the file in bytes
+        """
+        return os.path.getsize(self.path)
+
     def move(self, dst: str) -> None:
         """
         Moves the file to the given destination
@@ -363,7 +451,7 @@ class File:
         :param new: New name of the file without the path
         :param rename_func: If true, special % commands will be run on the new name
         """
-        new_path = self.get_folder_path() + os.sep + RegexHelper(new, self) if rename_func else new
+        new_path = self.get_folder_path() + os.sep + RegexHelper.parse(new, self) if rename_func else new
         os.rename(self.path, new_path)
 
     def create(self, create_folder: bool = True) -> File:
@@ -389,6 +477,9 @@ class File:
         """
 
         return not os.path.isdir(self.path) and os.path.exists(self.path)
+
+    def __repr__(self):
+        return f"File({self.path})"
 
     def __str__(self):
         return self.path
