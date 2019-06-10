@@ -40,6 +40,7 @@ d = Folder("./example/")
 d.collapse()
 ```
 
+---
 ### Adding the creation date to each file
 Adding the **creation date** to all files in the folder:
 ```
@@ -82,5 +83,6 @@ example
 │   │   └── c 10-Jun-2019.txt
 ```
 
+---
 ## Documentation
 Get started with the documentation [here](https://github.com/LavaAfterburner/Python-File-Library/wiki).
