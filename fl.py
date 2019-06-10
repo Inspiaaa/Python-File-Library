@@ -6,6 +6,7 @@ from datetime import datetime
 import os
 import re
 import shutil
+import subprocess
 
 
 class Folder:
@@ -351,6 +352,18 @@ class Folder:
         dst = os.path.abspath(dst)
         shutil.move(self.path, dst)
 
+    def show_in_explorer(self) -> None:
+        """
+        Opens the parent folder and highlights the folder in the file explorer
+        """
+        subprocess.Popen(f'explorer /select,"{self.path}"')
+
+    def open_in_explorer(self) -> None:
+        """
+        Opens the folder itself in the file explorer
+        """
+        subprocess.Popen(f'explorer "{self.path}"')
+
 
 class File:
     """
@@ -477,6 +490,12 @@ class File:
         """
 
         return not os.path.isdir(self.path) and os.path.exists(self.path)
+
+    def show_in_explorer(self) -> None:
+        """
+        Opens the folder containing the file and highlights it in the file explorer
+        """
+        subprocess.Popen(f'explorer /select,"{self.path}"')
 
     def __repr__(self):
         return f"File({self.path})"

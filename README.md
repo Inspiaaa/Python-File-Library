@@ -1,11 +1,17 @@
-![Python 3.7](https://img.shields.io/badge/Python-3.7-blue.svg?style=for-the-badge&logo=python)
-# FL - Python File Library
-FL enables many high level operations on Files and Folders in an OOP style.
 
-## Examples
+![Python 3.7](https://img.shields.io/badge/Python-3.7-blue.svg?style=for-the-badge&logo=python)  
+# FL - Python File Library  
+FL enables many **high level** operations on Files and Folders in an **OOP style**.
+For example: *Flattening*, *Renaming*, *Recursively Moving* / *Copying* / *Deleting*, ...
+  
+## Getting Started
 
-### Basic flattening of a folder
+### Prerequisites
+A working version of **Python 3.7**
 
+---
+### Example
+#### Basic flattening of a folder
 We create the folder structure:
 ```
 example
@@ -15,35 +21,27 @@ example
 │   ├── temp
 │   │   └── c.txt
 ```
-... and want to flatten it to:
+... and want to **flatten** it to:
 ```
 example
 ├── a.txt
 ├── b.txt
 └── c.txt
 ```
-
-We can achieve that with  the following code:
-
+We can achieve that with the following code:
 ```python
-from lf import File, Folder
-
-
-# Create the nested folder structure with some files in it
-File("./example/a.txt").create()
-File("./example/test/b.txt").create()
-File("./example/test/temp/c.txt").create()
-
-# Collapse the folder structure (flatten)
-d = Folder("./example/")
+from fl import File, Folder, Example  
+  
+# Create the example nested folder structure with some files
+Example.create_simple_nested()  
+  
+# Collapse (Flatten) the folder structure  
+d = Folder("./example/")  
 d.collapse()
-
 ```
 
-### Flattening a folder with a rename
-
-Now we have this folder structure:
-
+### Adding the creation date to each file
+Adding the **creation date** to all files in the folder:
 ```
 example
 ├── a.txt
@@ -51,71 +49,38 @@ example
 │   ├── a.txt
 │   ├── b.txt
 │   ├── temp
+│   │   ├── a.txt
+│   │   ├── b.txt
 │   │   └── c.txt
 ```
-
-Flattening it normally will not work, because the file `a.txt` would exist twice in the same folder. So to avoid that, the collapse method can take an optional renaming function:
-
+To do this, we can run following program:
 ```python
-from lf import File, Folder
+from fl import File, Folder, Example
 
+# Create the example folder structure: 
+Example.create_nested_with_duplicates()
 
-File("./example/a.txt").create()
-File("./example/test/a.txt").create()
-File("./example/test/b.txt").create()
-File("./example/test/temp/c.txt").create()
-
-# Collapse the folder structure (flatten)
+# Add the date
 d = Folder("./example/")
-d.collapse(rename_func="%B %C[-]%E")
-
+d.rename_files("%B %TCd-%TCb-%TCY%E")
 ```
-This code will result in:
+This program uses [special renaming commands](https://github.com/LavaAfterburner/Python-File-Library/wiki/Renaming-Commands) to add special data (e.g. Date). To **visualize** the result in the **console**, the folder class offers a method to print it:
+```python
+d = Folder("./example/")
+d.print_beautified()
+```
+Console:
 ```
 example
-├── a test.txt
-├── a.txt
-├── b test.txt
-└── c test-temp.txt
-```
-
-The magic happens here: ```rename_func="%B %C[-]%E```
-FL is able to execute special commands on a string renaming function:
-
- - `%B` - Name of the file (without extension type) or folder
- - `%E` - Extension type of the file (with .)
- - `%C[...]` - Collapsed folder names joined with the given sequence between `[` and `]`
- - `%T` - Time
-   - `%TC` - Creation Time
-   - `%TM` - Modified Time
-   - `%TA` - Access Time
-   - `%TL` - "Least Time" minimum time of Creation Time, Modified Time, Access Time, in case a file is corrupt
-
-To use the Time commands you have to add a [datetime formatting code](http://strftime.org/). 
-E.g.
-```python
-"%TCf-TCm-TCY" # "09-06-2019"
-"%B %TMY" # "MyFile 2019"
-```
-
-### Printing a folder structure
-```python
-File("./example/a.txt").create()
-File("./example/test/a.txt").create()
-File("./example/test/b.txt").create()
-File("./example/test/temp/c.txt").create()
-
-d = Folder("./example/")
-print(d.beautify())
-```
-
-Output:
-```
-example
-├── a.txt
+├── a 10-Jun-2019.txt
 ├── test
-│   ├── a.txt
-│   ├── b.txt
+│   ├── a 10-Jun-2019.txt
+│   ├── b 10-Jun-2019.txt
 │   ├── temp
-│   │   └── c.txt
+│   │   ├── a 10-Jun-2019.txt
+│   │   ├── b 10-Jun-2019.txt
+│   │   └── c 10-Jun-2019.txt
 ```
+
+## Documentation
+Get started with the documentation [here](https://github.com/LavaAfterburner/Python-File-Library/wiki).
