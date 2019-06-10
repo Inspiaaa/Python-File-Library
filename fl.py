@@ -9,6 +9,52 @@ import shutil
 import subprocess
 
 
+class SafeGuard:
+    """
+    An internal class used to avoid dangerous mishaps (e.g. "delete the c drive please")
+    """
+
+    _ENABLED = True
+    _PROTECT_DEPTH = 7
+
+    @staticmethod
+    def enable() -> None:
+        """
+        Enables the SafeGuard
+        """
+        SafeGuard._ENABLED = True
+
+    @staticmethod
+    def disable() -> None:
+        SafeGuard._ENABLED = False
+
+    @staticmethod
+    def is_enabled() -> bool:
+        return SafeGuard._ENABLED
+
+    @staticmethod
+    def get_protect_depth() -> int:
+        return SafeGuard._PROTECT_DEPTH
+
+    @staticmethod
+    def warn(path: str, op: str) -> None:
+        """
+        Warns the user that a very "low level" folder / file is going to be deleted or renamed
+
+        :param path: The path that is being accessed
+        :param op: The operation performed on the file / folder
+        """
+
+        if SafeGuard._ENABLED:
+            print(f"\n[FL.SAFEGUARD]: You are attempting to {op.upper()} {path}")
+            print(f"To continue the program, type 'continue' without the inverted commas")
+            print(f"If this message is not needed, the SafeGuard can be disabled with fl.SafeGuard.disable()\n")
+
+            response = input(">> ")
+            if response != "continue":
+                quit()
+
+
 class Folder:
     """
     FileLibrary Folder type to allow high level operations on folders
@@ -168,10 +214,12 @@ class Folder:
         os.makedirs(self.path, exist_ok=True)
         return self
 
-    def remove(self) -> None:
+    def delete(self) -> None:
         """
-        Recursively removes the folder and its content
+        Recursively deletes the folder and its content
         """
+        if self.get_depth() <= SafeGuard.get_protect_depth():
+            SafeGuard.warn(self.path, "delete")
         shutil.rmtree(self.path)
 
     def rename_files(self,
@@ -184,7 +232,12 @@ class Folder:
         :param start_depth: Only files of that depth or further get renamed (0 = rename all files)
         """
 
+        if self.get_depth() <= SafeGuard.get_protect_depth():
+            SafeGuard.warn(self.path, "rename files in")
+
         real_start_depth = self.get_depth()
+        sg_enabled = SafeGuard.is_enabled()
+        SafeGuard.disable()
 
         for root, dirs, files in self.walk():
             for name in files:
@@ -197,6 +250,9 @@ class Folder:
                     else:
                         file.rename(rename_func(file))
 
+        if sg_enabled:
+            SafeGuard.enable()
+
     def rename_folders(self,
                        rename_func: Union[Callable[[File], str], str] = None,
                        start_depth: int = 0) -> None:
@@ -207,7 +263,12 @@ class Folder:
         :param start_depth: Only folders of that depth or further are renamed (0 = rename all folders)
         """
 
+        if self.get_depth() <= SafeGuard.get_protect_depth():
+            SafeGuard.warn(self.path, "rename folders in")
+
         real_start_depth = self.get_depth()
+        sg_enabled = SafeGuard.is_enabled()
+        SafeGuard.disable()
 
         for root, dirs, files in self.walk(topdown=False):
             for name in dirs:
@@ -220,6 +281,9 @@ class Folder:
                     else:
                         folder.rename(rename_func(folder))
 
+        if sg_enabled:
+            SafeGuard.enable()
+
     def collapse(self,
                  start_depth: int = 0,
                  rename_func: Union[Callable[[File, List[str]], str], str] = None) -> None:
@@ -230,7 +294,12 @@ class Folder:
         :param rename_func: Function to rename each collapsed file to avoid duplicate names. Takes the file and the list of folders that were collapsed and returns the new file name (no path)
         """
 
+        if self.get_depth() <= SafeGuard.get_protect_depth():
+            SafeGuard.warn(self.path, "collapse")
+
         real_start_depth = self.get_depth()
+        sg_enabled = SafeGuard.is_enabled()
+        SafeGuard.disable()
 
         for root, dirs, files in self.walk(topdown=False):
             for name in files:
@@ -267,32 +336,49 @@ class Folder:
                 delta_depth = folder.get_depth() - real_start_depth
 
                 if delta_depth > start_depth:
-                    folder.remove()
+                    folder.delete()
 
-    def remove_files(self, start_depth: int = 0) -> None:
+        if sg_enabled:
+            SafeGuard.enable()
+
+    def delete_files(self, start_depth: int = 0) -> None:
         """
         Deletes all files in the folder
 
         :param start_depth: Only files of that depth or further get removed (0 = remove all files)
         """
 
+        if self.get_depth() <= SafeGuard.get_protect_depth():
+            SafeGuard.warn(self.path, "remove files in")
+
         real_start_depth = self.get_depth()
+        sg_enabled = SafeGuard.is_enabled()
+        SafeGuard.disable()
 
         for root, dirs, files in self.walk():
             for name in files:
                 file = File(root + os.sep + name)
                 delta_depth = file.get_depth() - real_start_depth
                 if delta_depth >= start_depth:
-                    file.remove()
+                    file.delete()
 
-    def removeif_files(self, condition: Callable[[File], bool], start_depth: int = 0) -> None:
+        if sg_enabled:
+            SafeGuard.enable()
+
+    def deleteif_files(self, condition: Callable[[File], bool], start_depth: int = 0) -> None:
         """
         Recursively goes through all files and removes each if the return of the condition function is true
 
         :param condition: When the function returns true, the file is removed
         :param start_depth: Only files of that depth or further get checked with the condition function (0 = check all)
         """
+
+        if self.get_depth() <= SafeGuard.get_protect_depth():
+            SafeGuard.warn(self.path, "remove files in")
+
         real_start_depth = self.get_depth()
+        sg_enabled = SafeGuard.is_enabled()
+        SafeGuard.disable()
 
         for root, dirs, files in self.walk():
             for name in files:
@@ -301,7 +387,10 @@ class Folder:
 
                 if delta_depth >= start_depth:
                     if condition(file):
-                        file.remove()
+                        file.delete()
+
+        if sg_enabled:
+            SafeGuard.enable()
 
     def find_folders(self, query: str) -> List[Folder]:
         """
@@ -340,6 +429,9 @@ class Folder:
 
         :param new: new name of the folder without the path
         """
+        if self.get_depth() <= SafeGuard.get_protect_depth():
+            SafeGuard.warn(self.path, "rename")
+
         new_path = self.get_folder_path() + os.sep + new
         os.rename(self.path, new_path)
 
@@ -349,6 +441,10 @@ class Folder:
 
         :param dst: The destination path
         """
+
+        if self.get_depth() <= SafeGuard.get_protect_depth():
+            SafeGuard.warn(self.path, "move")
+
         dst = os.path.abspath(dst)
         shutil.move(self.path, dst)
 
@@ -445,6 +541,10 @@ class File:
 
         :param dst: The destination path
         """
+
+        if self.get_depth() <= SafeGuard.get_protect_depth():
+            SafeGuard.warn(self.path, "move")
+
         dst = os.path.abspath(dst)
         shutil.move(self.path, os.path.abspath(dst))
 
@@ -464,6 +564,10 @@ class File:
         :param new: New name of the file without the path
         :param rename_func: If true, special % commands will be run on the new name
         """
+
+        if self.get_depth() <= SafeGuard.get_protect_depth():
+            SafeGuard.warn(self.path, "rename")
+
         new_path = self.get_folder_path() + os.sep + RegexHelper.parse(new, self) if rename_func else new
         os.rename(self.path, new_path)
 
@@ -478,10 +582,14 @@ class File:
         with open(self.path, "w"): pass
         return self
 
-    def remove(self) -> None:
+    def delete(self) -> None:
         """
         Removes the file
         """
+
+        if self.get_depth() <= SafeGuard.get_protect_depth():
+            SafeGuard.warn(self.path, "delete")
+
         os.remove(self.path)
 
     def exists(self) -> bool:
@@ -651,18 +759,52 @@ class RegexHelper:
 class Example:
     @staticmethod
     def create_simple():
+        """
+        Creates the following folder structure in the working directory:
+
+        example
+        ├── a.txt
+        ├── b.txt
+        └── c.txt
+        """
+
         File("./example/a.txt").create()
         File("./example/b.txt").create()
         File("./example/c.txt").create()
 
     @staticmethod
     def create_simple_nested():
+        """
+        Creates the following folder structure in the working directory:
+
+        example
+        ├── a.txt
+        ├── test
+        │   ├── b.txt
+        │   ├── temp
+        │   │   └── c.txt
+        """
+
         File("./example/a.txt").create()
         File("./example/test/b.txt").create()
         File("./example/test/temp/c.txt").create()
 
     @staticmethod
     def create_nested_with_duplicates():
+        """
+        Creates the following folder structure in the working directory:
+
+        example
+        ├── a.txt
+        ├── test
+        │   ├── a.txt
+        │   ├── b.txt
+        │   ├── temp
+        │   │   ├── a.txt
+        │   │   ├── b.txt
+        │   │   └── c.txt
+        """
+
         File("./example/a.txt").create()
         File("./example/test/a.txt").create()
         File("./example/test/b.txt").create()
