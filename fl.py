@@ -97,7 +97,7 @@ class Folder:
 
     def beautify(self) -> str:
         """
-        Returns a text tree visualization of the folder structure
+        Returns a text tree visualisation of the folder structure
         """
 
         def beautify_walk(path: str, depth: int) -> str:
@@ -123,7 +123,7 @@ class Folder:
 
     def print_beautified(self) -> None:
         """
-        Returns a text tree visualization of the folder structure
+        Returns a text tree visualisation of the folder structure
         """
 
         def beautify_walk(path: str, depth: int) -> str:
@@ -208,6 +208,7 @@ class Folder:
     def foreach_folder(self, func: Callable[[Folder], Any]) -> List[Any]:
         """
         Recursively goes through all folders in the folder and executes the given function for each
+
         :param func: The function that is called for every folder
         :return: Returns a list of the return values of each function call if the value is not none
         """
@@ -413,6 +414,7 @@ class Folder:
     def find_folders(self, query: str) -> List[Folder]:
         """
         Recursively goes through all folders in the folder and checks if the query is in the folder name
+
         :param query: Only folder names containing the query are returned
         :return: List of found Folder objects
         """
@@ -424,6 +426,7 @@ class Folder:
     def find_files(self, query: str) -> List[File]:
         """
         Recursively goes through all files in the folder and checks if the query is in the file name
+
         :param query: Only file names containing the query are returned
         :return: List of found File objects
         """
