@@ -15,6 +15,7 @@ class SafeGuard:
     """
 
     _ENABLED = True
+    _TEMP_ENABLED = True
     _PROTECT_DEPTH = 7
 
     @staticmethod
@@ -26,14 +27,39 @@ class SafeGuard:
 
     @staticmethod
     def disable() -> None:
+        """
+        Disables the SafeGuard
+        """
         SafeGuard._ENABLED = False
 
     @staticmethod
+    def temp_disable() -> None:
+        """
+        Temporarily disables the SafeGuard
+        """
+        SafeGuard._TEMP_ENABLED = SafeGuard._ENABLED
+        SafeGuard.disable()
+
+    @staticmethod
+    def temp_enable() -> None:
+        """
+        Enables the SafeGuard again after a temp_disable if it was enabled before
+        """
+        if SafeGuard._TEMP_ENABLED:
+            SafeGuard.enable()
+
+    @staticmethod
     def is_enabled() -> bool:
+        """
+        Returns true if the SafeGuard is enabled
+        """
         return SafeGuard._ENABLED
 
     @staticmethod
     def get_protect_depth() -> int:
+        """
+        Gets the maximum depth of files / folders that are protected
+        """
         return SafeGuard._PROTECT_DEPTH
 
     @staticmethod
@@ -236,8 +262,7 @@ class Folder:
             SafeGuard.warn(self.path, "rename files in")
 
         real_start_depth = self.get_depth()
-        sg_enabled = SafeGuard.is_enabled()
-        SafeGuard.disable()
+        SafeGuard.temp_disable()
 
         for root, dirs, files in self.walk():
             for name in files:
@@ -250,8 +275,7 @@ class Folder:
                     else:
                         file.rename(rename_func(file))
 
-        if sg_enabled:
-            SafeGuard.enable()
+        SafeGuard.temp_enable()
 
     def rename_folders(self,
                        rename_func: Union[Callable[[File], str], str] = None,
@@ -267,8 +291,7 @@ class Folder:
             SafeGuard.warn(self.path, "rename folders in")
 
         real_start_depth = self.get_depth()
-        sg_enabled = SafeGuard.is_enabled()
-        SafeGuard.disable()
+        SafeGuard.temp_disable()
 
         for root, dirs, files in self.walk(topdown=False):
             for name in dirs:
@@ -281,8 +304,7 @@ class Folder:
                     else:
                         folder.rename(rename_func(folder))
 
-        if sg_enabled:
-            SafeGuard.enable()
+        SafeGuard.temp_enable()
 
     def collapse(self,
                  start_depth: int = 0,
@@ -352,8 +374,7 @@ class Folder:
             SafeGuard.warn(self.path, "remove files in")
 
         real_start_depth = self.get_depth()
-        sg_enabled = SafeGuard.is_enabled()
-        SafeGuard.disable()
+        SafeGuard.temp_disable()
 
         for root, dirs, files in self.walk():
             for name in files:
@@ -362,8 +383,7 @@ class Folder:
                 if delta_depth >= start_depth:
                     file.delete()
 
-        if sg_enabled:
-            SafeGuard.enable()
+        SafeGuard.temp_enable()
 
     def deleteif_files(self, condition: Callable[[File], bool], start_depth: int = 0) -> None:
         """
@@ -377,8 +397,7 @@ class Folder:
             SafeGuard.warn(self.path, "remove files in")
 
         real_start_depth = self.get_depth()
-        sg_enabled = SafeGuard.is_enabled()
-        SafeGuard.disable()
+        SafeGuard.temp_disable()
 
         for root, dirs, files in self.walk():
             for name in files:
@@ -389,8 +408,7 @@ class Folder:
                     if condition(file):
                         file.delete()
 
-        if sg_enabled:
-            SafeGuard.enable()
+        SafeGuard.temp_enable()
 
     def find_folders(self, query: str) -> List[Folder]:
         """
